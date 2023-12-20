@@ -1,0 +1,88 @@
+﻿@page "/customer-form"
+@page "/customer-form/{Id:int}"
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+<PageTitle>
+    @pageTitle
+</PageTitle>
+
+<FluentGrid
+    Justify="@JustifyContent.Center"
+    xs="4"
+>
+    <FluentGridItem>
+        <FluentCard>
+        <EditForm Model="Customer">
+            <FluentTextField 
+            Appearance="FluentInputAppearance.Filled"
+            Label="Customer Name"
+            @bind-Value="@Customer!.Name"
+            Style="width: 100%"
+            />
+            <FluentTextField 
+            Appearance="FluentInputAppearance.Filled"
+            Label="Customer Email"
+            @bind-Value="@Customer!.Email"
+            Style="width: 100%"
+            />
+            <FluentButton
+            Appearance="Appearance.Accent"
+            @onclick="() => SaveCustomer()"
+            >
+                @pageTitle
+            </FluentButton>
+            <FluentAnchor
+            Href="/"
+            >
+                Cancel
+            </FluentAnchor>
+        </EditForm>
+        </FluentCard>
+    </FluentGridItem>
+</FluentGrid>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; } = null;
+    private string pageTitle => Id != null ? "Edit Customer" : "Add Customer";
+
+    [SupplyParameterFromForm]
+    public Customer? Customer {get; set;} = new Customer();
+
+    private AppDbContext? Context { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Context = DbFactory.CreateDbContext();
+        if (Id is null)
+        {
+            Customer = new Customer();
+        } else {
+            Customer = await Context.Customers.FindAsync(Id);
+        }
+
+       await base.OnInitializedAsync();
+    }
+
+    private async Task SaveCustomer()
+    {
+        if(Id !=null)
+        {
+            Context!.Customers.Update(Customer!);
+            DialogService.ShowSuccess($"Customer {Customer!.Name} updated successfully!");
+        } else {
+            Context!.Customers.Add(Customer!);
+            DialogService.ShowSuccess($"Customer {Customer!.Name} added successfully!");
+        }
+
+        var results = await Context.SaveChangesAsync();
+        if (results > 0)
+        {
+            await Task.Delay(1000);
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
